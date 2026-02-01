@@ -68,9 +68,18 @@ convert:
 		echo "Run 'make run' first to generate frames"; \
 		exit 1; \
 	fi
-	@echo "Converting PPM frames to video..."
-	cd $(OUTPUT_DIR) && ffmpeg -y -i %d.ppm -r 60 ../$(VIDEO_OUTPUT)
+	@echo "Converting PPM frames to video (optimized for compatibility)..."
+	cd $(OUTPUT_DIR) && ffmpeg -y -framerate 60 -i %d.ppm \
+		-c:v libx264 \
+		-preset slow \
+		-crf 22 \
+		-profile:v main \
+		-level 4.0 \
+		-pix_fmt yuv420p \
+		-movflags +faststart \
+		../$(VIDEO_OUTPUT)
 	@echo "Video created: $(VIDEO_OUTPUT)"
+	
 
 # Watch/play the video
 watch:

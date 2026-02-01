@@ -409,7 +409,7 @@ int main (int argc, char* argv[]){
     wclear(win);
     mvwprintw(win, 0, 0, "Framges gerados.");
 
-    getch();
+    //getch();
     delwin(win);
     endwin();
 

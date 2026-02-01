@@ -89,9 +89,17 @@ g++ -O3 ./main.cpp -o 3D -lncurses
 # Executar (gera frames)
 ./3D caminho/para/seu/modelo.obj
 
-# Converter para vídeo (dentro do diretório output)
+# Converter para vídeo com compatibilidade universal
 cd output
-ffmpeg -i %d.ppm -r 60 ../output.mp4
+ffmpeg -framerate 60 -i %d.ppm \
+  -c:v libx264 \
+  -preset slow \
+  -crf 22 \
+  -profile:v main \
+  -level 4.0 \
+  -pix_fmt yuv420p \
+  -movflags +faststart \
+  ../output.mp4
 cd ..
 
 # Reproduzir
@@ -134,8 +142,21 @@ O programa renderiza o modelo em tempo real. Os frames são capturados automatic
 
 - **Taxa de frames**: 60 FPS (configurável no código)
 - **Formato de saída**: PPM (Portable Pixmap)
-- **Codec de vídeo**: H.264 (padrão do FFmpeg)
+- **Codec de vídeo**: H.264 (libx264)
 - **Resolução**: Depende do tamanho do terminal
+- **Perfil de vídeo**: Main Profile Level 4.0 (compatível com smartphones)
+- **Espaço de cor**: YUV 4:2:0 (compatível com WhatsApp)
+- **Otimização**: Fast Start habilitado (reprodução imediata)
+
+### Flags de Compatibilidade
+
+O vídeo gerado usa as seguintes otimizações para máxima compatibilidade:
+- `-preset slow`: Compressão otimizada (mais tempo de encoding)
+- `-crf 22`: Qualidade balanceada (0-51, padrão 28)
+- `-profile:v main`: Compatível com a maioria dos dispositivos
+- `-level 4.0`: Suporta até 4K a 60fps
+- `-pix_fmt yuv420p`: Formato de cor universal
+- `-movflags +faststart`: Permite streaming e reprodução rápida
 
 ## Targets do Makefile
 
@@ -145,7 +166,7 @@ O programa renderiza o modelo em tempo real. Os frames são capturados automatic
 | `make dependencies` | Instala as dependências do sistema |
 | `make build` | Compila o programa |
 | `make run OBJ_FILE=...` | Executa o programa e gera frames |
-| `make convert` | Converte PPM frames em MP4 |
+| `make convert` | Converte PPM frames em MP4 (otimizado) |
 | `make watch` | Reproduz o vídeo gerado |
 | `make pipeline OBJ_FILE=...` | Executa pipeline completo |
 | `make clean` | Remove executável e vídeo |
