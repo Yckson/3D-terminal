@@ -192,7 +192,3 @@ make pipeline OBJ_FILE=seu_modelo_3d.obj
 ## Licença
 
 Veja o arquivo [LICENSE](LICENSE) para detalhes.
-
-## Contribuições
-
-Contribuições são bem-vindas! Sinta-se à vontade para fazer fork e submeter pull requests.
