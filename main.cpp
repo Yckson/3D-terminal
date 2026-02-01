@@ -2,6 +2,8 @@
 #include <chrono>
 #include <climits>
 #include <cmath>
+#include <cstddef>
+#include <exception>
 #include <fstream>
 #include <istream>
 #include <ncurses.h>
@@ -72,7 +74,7 @@ class Screen {
     private: int width;
     private: int height;
     
-    public: int FPS = 30;
+    public: int FPS = 60;
 
     public: Screen (int width, int height) : height(height), width(width){
 
@@ -99,8 +101,8 @@ class Screen {
 
     public: pair<int, int> project (const point_t& cords) const {
         const double eps = 1e-9;
-        const double camera_z = 10000;    // quanto mais alto, mais "longe" a câmera
-        const double focal = 5000;       // escala para transformar x/z em pixels
+        const double camera_z = 5000;    // quanto mais alto, mais "longe" a câmera
+        const double focal = 1000;       // escala para transformar x/z em pixels
 
         auto c = cords.getCordinates();
         double x = c[0];
@@ -129,12 +131,12 @@ class Screen {
         auto [x, y, z] = p.getCordinates();
         const double c = cos(angle);
         const double s = sin(angle);
-        x = (x * c) - z * s;
-        z = x*s + z*c;
+        double new_x = (x * c) - z * s;
+        double new_z = x*s + z*c;
         return point_t ({
-            (x * c) - y * s,
-            x*s + y*c,
-            z
+            (new_x * c) - y * s,
+            new_x*s + y*c,
+            new_z
         });
     }
 
@@ -175,6 +177,36 @@ class Screen {
         }
     }
 
+};
+
+struct ppmImage_t {
+
+    int height = 0;
+    int width = 0;
+    vector<vector<int>> buffer;
+
+
+    ppmImage_t (int height, int width, vector<vector<int>>& buffer) 
+                : height(height), width(width), buffer(buffer){}
+
+    ppmImage_t () : buffer(vector<vector<int>>()){}
+
+    ppmImage_t (ppmImage_t& ppmImage) : height(ppmImage.height), width(ppmImage.width), buffer(ppmImage.buffer){}
+
+    ppmImage_t (vector<vector<int>> buffer) : height(buffer.size()), width(buffer[0].size()), buffer(buffer){}
+
+    ppmImage_t (int height, int width) : height(height), width(width){
+
+        this->buffer = vector<vector<int>> (this->height, vector<int> (this->width, 1));
+
+    }
+
+    vector<int>& operator[] (size_t idx){
+        if (idx < this->height){
+            return this->buffer[idx];
+        }
+        else throw std::out_of_range("Img index out of range!\n");
+    }
 };
 
 
@@ -278,45 +310,87 @@ int main (int argc, char* argv[]){
 
     double dz = 0;
     double angle = 0;
+    int i = 0;
 
-    while (1){
+    int counter = 500;
 
+    while (--counter){
+        wrefresh(win);
+
+        
         std::this_thread::sleep_for(chrono::milliseconds(1000/scr.FPS));
 
         auto p1 = scr.cartesianToScreen(scr.project(point_t ()));
 
         
-        wclear(win);
+         if (i == 3){
+             wclear(win);
+             i = 0;
+         }
+         i++;
+        
+        //wclear(win);
         //box(win, 0, 0);
-        wrefresh(win);
+        
 
         ///*
+
+        ppmImage_t img(scr.getScreenSize().second, scr.getScreenSize().first);
+
         for (auto& face : faces){
             for (int i = 0; i < face.size(); i++){
                 auto& pa = points[face[i]];
                 auto& pb = points[face[(i+1)%face.size()]];
 
 
-                // scr.drawLine(
-                //     scr.cartesianToScreen(scr.project(scr.translate(scr.rotate(pa, angle), 1)))
-                //     ,
-                //     scr.cartesianToScreen(scr.project(scr.translate(scr.rotate(pb, angle), 1)))
-                
-                // );
+                auto paProjected = scr.cartesianToScreen(scr.project(scr.translate(scr.rotate(pa, angle), 1)));
+
+                auto pbProjected = scr.cartesianToScreen(scr.project(scr.translate(scr.rotate(pb, angle), 1)));
+
+                 scr.drawLine(
+                     paProjected
+                     ,
+                     pbProjected
+                 );
             }
         }
 
           for (auto& point : points){
               auto p = scr.cartesianToScreen(scr.project(scr.translate(scr.rotate(point, angle), 1)));
-              mvwprintw(win, p.second, p.first, "@");
+              if (p.second >= 0 && p.second < img.height && p.first >= 0 && p.first < img.width) {
+                  mvwprintw(win, p.second, p.first, "@");
+                  img[p.second][p.first] = 0;
+              }
           }
 
         double dt =  1 / (double)scr.FPS;
         //dz += 1*dt;
         angle += (PI/4)*dt;
 
+        ostringstream pathStream; pathStream << "./output/" << (4000 - counter) << ".ppm";
+        string filePath = pathStream.str();
+        ofstream tmpImg(filePath, ios::out);
         
-        wrefresh(win);
+        if (!tmpImg.is_open()) {
+            mvwprintw(win, 0, 0, "Erro ao abrir arquivo: %s", filePath.c_str());
+            wrefresh(win);
+        } else {
+            ostringstream imageStream;
+            imageStream << "P1\n";
+            imageStream << img.width << ' ' << img.height << '\n';
+
+            for (int i = 0; i < img.height; i++){
+                for (int j = 0; j < img.width; j++){
+                    imageStream << img[i][j] << ' ';
+                }
+                imageStream << '\n';
+            }
+
+            tmpImg << imageStream.str();
+            tmpImg.flush();
+            tmpImg.close();
+        }
+
         //sleep(10);
         
         //getch();
@@ -324,7 +398,8 @@ int main (int argc, char* argv[]){
 
     }
 
-
+    wclear(win);
+    mvwprintw(win, 0, 0, "Framges gerados.");
 
     getch();
     delwin(win);
