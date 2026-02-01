@@ -240,6 +240,14 @@ int main (int argc, char* argv[]){
 
     fstream objFile (argv[1]);
 
+    // Validar se arquivo foi aberto
+    if (!objFile.is_open()) {
+        endwin();
+        cerr << "Erro: Arquivo '" << argv[1] << "' nao pode ser aberto!" << endl;
+        cerr << "Verifique se o arquivo existe e o caminho esta correto." << endl;
+        return 1;
+    }
+
     string line;
 
     vector<vector<point_t>> objs;
@@ -312,7 +320,7 @@ int main (int argc, char* argv[]){
     double angle = 0;
     int i = 0;
 
-    int counter = 500;
+    int counter = 1000;
 
     while (--counter){
         wrefresh(win);
@@ -367,7 +375,7 @@ int main (int argc, char* argv[]){
         //dz += 1*dt;
         angle += (PI/4)*dt;
 
-        ostringstream pathStream; pathStream << "./output/" << (4000 - counter) << ".ppm";
+        ostringstream pathStream; pathStream << "./output/" << (1000 - counter) << ".ppm";
         string filePath = pathStream.str();
         ofstream tmpImg(filePath, ios::out);
         
